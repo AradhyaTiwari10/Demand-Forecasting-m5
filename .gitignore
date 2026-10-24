@@ -1,0 +1,12 @@
+# raw M5 files are large (about 450 MB) - everyone downloads them from Kaggle
+data/raw/*.csv
+data/processed/
+
+# Python / Jupyter / macOS clutter
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+
+# old version kept only as a local backup
+_old_version/

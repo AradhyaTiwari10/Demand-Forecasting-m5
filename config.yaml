@@ -1,0 +1,41 @@
+# Settings for Phase 1. Change numbers here, not inside the code.
+
+data:
+  raw_dir: data/raw                          # put the M5 csv files here
+  processed_file: data/processed/m5_sample.csv
+  days_of_history: 600                       # keep the last 600 days of each series
+  established_per_category: 25               # older items picked from FOODS, HOBBIES and HOUSEHOLD
+  new_items: 25                              # items launched near the end of the data (cold start)
+  new_item_launch_window: [150, 45]          # launched between 150 and 45 days before the last day
+  random_seed: 42
+
+stockouts:
+  min_zero_run: 3        # never call fewer than 3 zero days in a row a stockout
+  max_chance: 0.01       # a zero run is a stockout if it would happen by luck less than 1% of the time
+
+cold_start:
+  max_days_since_launch: 90    # an item is "cold start" if it launched less than 90 days before the origin
+  min_days_to_forecast: 7      # we only forecast items with at least one week of history
+
+backtest:
+  horizon: 14            # forecast 14 days ahead
+  num_origins: 6         # number of forecast origins (cut-off dates)
+  step_days: 14          # days between two origins
+  quantiles: [0.1, 0.5, 0.9]
+
+features:
+  lags: [1, 2, 7, 14, 28]
+  rolling_windows: [7, 28]
+
+gbdt:
+  max_iter: 200
+  learning_rate: 0.05
+  max_leaf_nodes: 31
+  min_samples_leaf: 20
+
+kalman:
+  noise_ratios: [0.001, 0.01, 0.05, 0.2, 1.0]  # candidate values for q / r (how fast the level may move)
+  min_weeks_for_weekly_pattern: 4
+
+output:
+  reports_dir: reports
