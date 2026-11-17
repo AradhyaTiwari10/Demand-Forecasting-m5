@@ -1,52 +1,78 @@
 # Inventory Demand Forecasting: Kalman Filtering and Global DeepAR Models
 
-**Phase 1: AML baselines and local state estimation.**
-We forecast daily unit sales for 99 product-store series from the M5 (Walmart) data and compare:
+**Phase 1 & Phase 2: Complete Implementation**  
+We forecast daily unit sales for 99 product-store series from the M5 (Walmart) competition data and compare four paradigms:
 
-| Model | Type |
-|---|---|
-| Seasonal naive | repeats last week |
-| Kalman filter | one local-level filter per series, with weekday effects and stockout handling |
-| GBDT | one global gradient boosted tree model on lag, calendar, price and item features |
+| Model | Type | Paradigm |
+|---|---|---|
+| Seasonal naive | repeats last week | Simple baseline |
+| Kalman filter | one local-level filter per series, with weekday effects and stockout handling | Local state-space estimation |
+| GBDT | global gradient boosted tree model on lag, calendar, price and item features | Tabular AML |
+| DeepAR (LSTM) | global autoregressive encoder-decoder LSTM with parametric Gaussian likelihood | Global Deep Learning sequence model |
 
-Every model is tested on the same 6 rolling forecast origins with a 14-day horizon and scored with
-MAE, RMSE, WAPE, pinball loss (q10 / q50 / q90) and 80% interval coverage.
-Phase 2 will add a global DeepAR / LSTM model to the same backtest.
+Every model is evaluated strictly on the exact same 6 rolling forecast origins with a 14-day horizon and scored with:
+- Point metrics: **MAE, RMSE, WAPE**
+- Probabilistic metrics: **pinball loss ($q_{10}, q_{50}, q_{90}$)** and **80% interval coverage**.
 
-The results are in [`reports/phase1_report.md`](reports/phase1_report.md).
+Phase 1 findings are in [`reports/phase1_report.md`](reports/phase1_report.md).  
+Phase 2 findings and comparative analysis are in [`reports/phase2_report.md`](reports/phase2_report.md).
 
 ## How to run
 
-1. Install the packages (Python 3.8 or newer):
+1. Install all dependencies (Python 3.8+):
 
    ```bash
    pip install -r requirements.txt
    ```
 
-2. Download the M5 data from Kaggle: https://www.kaggle.com/competitions/m5-forecasting-accuracy/data
-   (you need to accept the competition rules first). Copy these three files into `data/raw/`:
+2. Ensure M5 dataset files are in `data/raw/`:
+   - `sales_train_evaluation.csv`
+   - `calendar.csv`
+   - `sell_prices.csv`
 
-   ```
-   data/raw/sales_train_evaluation.csv
-   data/raw/calendar.csv
-   data/raw/sell_prices.csv
-   ```
-
-3. Run everything (about one minute):
+3. **Phase 1 Execution (Baselines & Kalman Filter):**
 
    ```bash
    python3 run_phase1.py --rebuild
    ```
 
-4. Run the checks:
+4. **Phase 2 Execution (DeepAR / LSTM on identical split):**
+
+   ```bash
+   python3 run_phase2.py
+   ```
+
+5. **Run test suite (Phase 1 + Phase 2 checks):**
 
    ```bash
    python3 -m pytest tests/
    ```
 
-5. Optional walkthrough: open `notebooks/phase1_walkthrough.ipynb`.
+6. Interactive Walkthroughs:
+   - Phase 1: `notebooks/phase1_walkthrough.ipynb`
+   - Phase 2: `notebooks/phase2_walkthrough.ipynb`
 
 ## Project layout
+
+```
+config.yaml              all settings (sample size, horizon, origins, GBDT, Kalman, and LSTM parameters)
+data_loader.py           read M5, pick series, complete date grid, launch dates, stockout flags
+features.py              lag / rolling / calendar / price features (past data only)
+metrics.py               MAE, RMSE, WAPE, pinball loss, coverage
+baselines.py             seasonal naive and GBDT
+kalman_filter.py         per-series Kalman filter
+backtest.py              rolling-origin backtest framework
+lstm_dataset.py          PyTorch Dataset, Scaler, and DataLoader generation for LSTM (Phase 2)
+lstm_model.py            DeepAR LSTM architecture, Gaussian NLL loss, training loop (Phase 2)
+lstm_forecast.py         Inference pipeline and quantile formatting for DeepAR (Phase 2)
+report.py                Phase 1 metric tables, charts and markdown report
+report_phase2.py         Phase 2 4-model metric tables, charts and markdown report (Phase 2)
+run_phase1.py            Phase 1 pipeline orchestrator
+run_phase2.py            Phase 2 pipeline orchestrator (Phase 2)
+tests/                   comprehensive test suite (Phase 1 unit tests + test_lstm.py)
+notebooks/               walkthrough notebooks for Phase 1 and Phase 2
+reports/                 output reports, CSVs, prediction records, and charts
+```
 
 ```
 config.yaml          all settings (sample size, horizon, origins, model settings)
