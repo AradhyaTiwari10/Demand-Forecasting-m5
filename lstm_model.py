@@ -24,6 +24,7 @@ Derived analytically from the Gaussian CDF:
 where Φ⁻¹ is the standard-normal percent-point function (scipy.stats.norm.ppf).
 """
 
+import copy
 import math
 import numpy as np
 import torch
@@ -38,6 +39,11 @@ try:
 except ImportError:  # graceful fallback so the file can be imported standalone
     ENCODER_FEATURES = 12
     DECODER_FEATURES = 7
+
+
+# Smallest allowed standard deviation (in scaled-demand units). Without a floor the model
+# shrinks sigma towards 0 on the many zero-sales days and the loss explodes during training.
+MIN_LOG_SIGMA = math.log(0.1)
 
 
 # ===========================================================================
@@ -186,7 +192,7 @@ class DeepARLSTM(nn.Module):
         # raw : (batch, prediction_length, 2)
 
         mu = raw[..., 0]                        # (batch, prediction_length)
-        sigma = torch.exp(raw[..., 1]).clamp(min=1e-6)
+        sigma = torch.exp(raw[..., 1].clamp(min=MIN_LOG_SIGMA))
 
         result = {}
         for q in quantiles:
@@ -223,7 +229,8 @@ def gaussian_nll_loss(
     -------
     Scalar tensor — mean NLL over all valid positions.
     """
-    sigma = torch.exp(log_sigma).clamp(min=1e-6)
+    log_sigma = log_sigma.clamp(min=MIN_LOG_SIGMA)
+    sigma = torch.exp(log_sigma)
 
     # Element-wise NLL:  0.5 * log(2π) + log(σ) + (y − μ)² / (2σ²)
     nll = (
@@ -363,6 +370,9 @@ def fit_lstm(
         device_str = config.get("device", "cpu")
         device = torch.device(device_str)
 
+    # Same random start every run, so results can be reproduced exactly
+    torch.manual_seed(int(config.get("seed", 42)))
+
     # --- Build model ----------------------------------------------------------
     model = DeepARLSTM(
         encoder_features=ENCODER_FEATURES,
@@ -380,6 +390,7 @@ def fit_lstm(
     epochs = int(config.get("epochs", 30))
     patience = 5          # epochs without improvement before halving lr
     best_val_loss = float("inf")
+    best_state = copy.deepcopy(model.state_dict())
     epochs_no_improve = 0
 
     for epoch in range(1, epochs + 1):
@@ -397,6 +408,7 @@ def fit_lstm(
             # Simple LR decay: halve lr after `patience` stagnant epochs
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
+                best_state = copy.deepcopy(model.state_dict())   # remember the best epoch
                 epochs_no_improve = 0
             else:
                 epochs_no_improve += 1
@@ -409,6 +421,8 @@ def fit_lstm(
         else:
             print(f"Epoch {epoch:3d}/{epochs} | train_loss={train_loss:.4f}")
 
+    # Use the epoch with the lowest validation loss, not simply the last one
+    model.load_state_dict(best_state)
     model.eval()
     return model
 
