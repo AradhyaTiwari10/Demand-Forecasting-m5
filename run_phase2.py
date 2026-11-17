@@ -208,7 +208,7 @@ def main() -> None:
         # --- (d) DeepAR forecast ---
         forecast_df = deepar_forecast(
             train=train,
-            future=future,
+            future_df=future,
             series_list=series_list,
             horizon=horizon,
             quantiles=quantiles,
