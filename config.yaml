@@ -39,3 +39,17 @@ kalman:
 
 output:
   reports_dir: reports
+
+# Phase 2: LSTM (DeepAR-style) settings
+lstm:
+  context_length: 90        # days of past history fed to the encoder
+  prediction_length: 14     # must match backtest horizon
+  batch_size: 64
+  hidden_size: 64
+  num_layers: 2
+  dropout: 0.1
+  epochs: 30
+  learning_rate: 0.001
+  num_workers: 0            # DataLoader workers (0 = main process, safe on all platforms)
+  device: cpu               # set to "cuda" if a GPU is available
+  quantiles: [0.1, 0.5, 0.9]
